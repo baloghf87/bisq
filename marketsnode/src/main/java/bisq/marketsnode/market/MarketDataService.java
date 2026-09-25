@@ -45,11 +45,11 @@ import bisq.common.app.Version;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.ConcurrentModificationException;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
-import java.util.concurrent.ConcurrentModificationException;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
