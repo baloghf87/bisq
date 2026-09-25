@@ -1,0 +1,111 @@
+# Kubernetes manifests for the Bisq marketsnode.
+#
+# The node connects to the Bisq network over its own bundled Tor instance (no sidecar required) and
+# serves the order book / trades API on port 8090. State (P2P data store, trade statistics, Tor
+# identity) is kept on a PersistentVolume so restarts skip re-bootstrapping.
+#
+# Build and push the image first:
+#   docker build -f marketsnode/Dockerfile -t <registry>/bisq-marketsnode:latest .
+#   docker push <registry>/bisq-marketsnode:latest
+# then set that image reference below.
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: marketsnode-data
+  labels:
+    app: marketsnode
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: marketsnode
+  labels:
+    app: marketsnode
+spec:
+  replicas: 1
+  # RWO volume + a single P2P identity: one pod at a time.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: marketsnode
+  template:
+    metadata:
+      labels:
+        app: marketsnode
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        fsGroup: 10001
+      containers:
+        - name: marketsnode
+          image: bisq/marketsnode:latest # replace with your pushed image
+          ports:
+            - name: http
+              containerPort: 8090
+          env:
+            - name: BISQ_MARKETS_API_HOST
+              value: "0.0.0.0"
+            - name: BISQ_MARKETS_API_PORT
+              value: "8090"
+            - name: BISQ_NETWORK
+              value: "BTC_MAINNET"
+            # Keep the JVM heap inside the container memory limit.
+            - name: JAVA_TOOL_OPTIONS
+              value: "-Xmx1536m"
+          volumeMounts:
+            - name: data
+              mountPath: /data
+          # Tor bootstrap + initial P2P data sync can take several minutes on first start.
+          startupProbe:
+            httpGet:
+              path: /
+              port: http
+            periodSeconds: 10
+            failureThreshold: 60 # up to ~10 minutes to come up
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            periodSeconds: 30
+            failureThreshold: 4
+          readinessProbe:
+            httpGet:
+              path: /api/v1/ready
+              port: http
+            periodSeconds: 15
+            failureThreshold: 4
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "1Gi"
+            limits:
+              cpu: "2"
+              memory: "2Gi"
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: marketsnode-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: marketsnode
+  labels:
+    app: marketsnode
+spec:
+  type: ClusterIP
+  selector:
+    app: marketsnode
+  ports:
+    - name: http
+      port: 80
+      targetPort: http

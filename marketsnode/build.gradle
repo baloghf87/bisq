@@ -1,0 +1,27 @@
+plugins {
+    id 'bisq.application'
+    id 'bisq.javafx'
+    id 'bisq.gradle.app_start_plugin.AppStartPlugin'
+}
+
+application {
+    mainClass = 'bisq.marketsnode.MarketsNodeMain'
+}
+
+javafx {
+    modules = ['javafx.base']
+}
+
+distTar.enabled = true
+
+dependencies {
+    implementation project(':common')
+    implementation project(':p2p')
+    implementation project(':core')
+    annotationProcessor libs.lombok
+    compileOnly libs.lombok
+    implementation libs.slf4j.api
+    implementation(libs.google.guice) {
+        exclude(module: 'guava')
+    }
+}
