@@ -89,6 +89,7 @@ public class MarketsHttpServer {
             return marketDataService.candles(requireMarket(params), params.get("interval"), from, to);
         });
         register("/api/v1/ticker", params -> marketDataService.ticker(params.get("market")));
+        register("/api/v1/summary", params -> marketDataService.summary());
         // Readiness: 200 once the P2P network is bootstrapped, 503 while still syncing.
         httpServer.createContext("/api/v1/ready", new ReadinessHandler(marketDataService));
         // Root context doubles as a liveness check and reports current status.

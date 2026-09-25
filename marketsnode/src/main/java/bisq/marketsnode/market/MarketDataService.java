@@ -25,6 +25,7 @@ import bisq.marketsnode.dto.MarketDtos.MarketDto;
 import bisq.marketsnode.dto.MarketDtos.OrderBookDto;
 import bisq.marketsnode.dto.MarketDtos.OrderBookEntryDto;
 import bisq.marketsnode.dto.MarketDtos.StatusDto;
+import bisq.marketsnode.dto.MarketDtos.SummaryDto;
 import bisq.marketsnode.dto.MarketDtos.TickerDto;
 import bisq.marketsnode.dto.MarketDtos.TradeDto;
 
@@ -264,7 +265,73 @@ public class MarketDataService {
     }
 
 
-    ///////////////////////////////////////////////////////////////////////////////////////////
+    /**
+     * Ticker + book liquidity of every market in one pass (see {@link SummaryDto}): markets with offers
+     * or trade statistics. Makers are distinct offer node addresses.
+     */
+    public List<SummaryDto> summary() {
+        Map<String, TickerDto> tickers = new TreeMap<>();
+        // ticker(null) builds each market's book too; only the 24h trade fields are taken from it
+        for (TickerDto t : ticker(null)) {
+            tickers.put(t.market, t);
+        }
+        Map<String, String> makerByOfferId = new java.util.HashMap<>();
+        withRetry(offerBookService::getOffers).forEach(o -> {
+            if (o.getMakerNodeAddress() != null) {
+                makerByOfferId.put(o.getId(), o.getMakerNodeAddress().getFullAddress());
+            }
+        });
+        Map<String, List<OfferForJson>> offersByMarket = new TreeMap<>();
+        for (OfferForJson o : offers()) {
+            String m = marketOf(o);
+            if (!m.isBlank()) {
+                offersByMarket.computeIfAbsent(m, k -> new ArrayList<>()).add(o);
+            }
+        }
+        java.util.Set<String> pairs = new java.util.TreeSet<>(offersByMarket.keySet());
+        pairs.addAll(tickers.keySet());
+
+        List<SummaryDto> result = new ArrayList<>();
+        for (String pair : pairs) {
+            List<OrderBookEntryDto> bids = new ArrayList<>();
+            List<OrderBookEntryDto> asks = new ArrayList<>();
+            java.util.Set<String> makers = new java.util.HashSet<>();
+            for (OfferForJson o : offersByMarket.getOrDefault(pair, List.of())) {
+                (o.primaryMarketDirection == OfferDirection.BUY ? bids : asks).add(toOrderBookEntry(o));
+                String maker = makerByOfferId.get(o.id);
+                if (maker != null) {
+                    makers.add(maker);
+                }
+            }
+            TickerDto t = tickers.get(pair);
+            String[] parts = splitPair(pair);
+            result.add(new SummaryDto(pair, parts[0], parts[1],
+                    t == null ? null : t.last, t == null ? null : t.open,
+                    t == null ? null : t.high, t == null ? null : t.low,
+                    t == null ? 0 : t.volumeBase, t == null ? 0 : t.volumeCounter, t == null ? 0 : t.numTrades,
+                    bids.stream().mapToDouble(e -> e.price).max().stream().boxed().findFirst().orElse(null),
+                    asks.stream().mapToDouble(e -> e.price).min().stream().boxed().findFirst().orElse(null),
+                    bids.size(), asks.size(), sumAmount(bids), sumAmount(asks), vwap(bids), vwap(asks),
+                    makers.size()));
+        }
+        return result;
+    }
+
+    private static double sumAmount(List<OrderBookEntryDto> entries) {
+        return entries.stream().mapToDouble(e -> e.amount).sum();
+    }
+
+    /** Size-weighted average price of a book side; null when the side is empty. */
+    private static Double vwap(List<OrderBookEntryDto> entries) {
+        double size = sumAmount(entries);
+        if (size <= 0) {
+            return null;
+        }
+        return entries.stream().mapToDouble(e -> e.price * e.amount).sum() / size;
+    }
+
+
+        ///////////////////////////////////////////////////////////////////////////////////////////
     // Offers (raw)
     ///////////////////////////////////////////////////////////////////////////////////////////
 

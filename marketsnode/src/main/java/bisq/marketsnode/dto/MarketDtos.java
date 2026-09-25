@@ -213,4 +213,57 @@ public final class MarketDtos {
             this.numTrades = numTrades;
         }
     }
+
+    /**
+     * One market's ticker + order-book liquidity in a single row, for whole-universe consumers (a market
+     * screener) that would otherwise need one order-book call per market. Book fields describe the
+     * resting offers: counts, total size in the base asset and the size-weighted average price of each
+     * side; {@code makerCount} is the number of distinct maker nodes with an offer in the market.
+     */
+    public static final class SummaryDto {
+        public final String market;
+        public final String base;
+        public final String counter;
+        public final Double last;
+        public final Double open;
+        public final Double high;
+        public final Double low;
+        public final double volumeBase;
+        public final double volumeCounter;
+        public final int numTrades;
+        public final Double bestBid;
+        public final Double bestAsk;
+        public final int bidOfferCount;
+        public final int askOfferCount;
+        public final double bidVolume;
+        public final double askVolume;
+        public final Double bidVwap;
+        public final Double askVwap;
+        public final int makerCount;
+
+        public SummaryDto(String market, String base, String counter, Double last, Double open, Double high,
+                          Double low, double volumeBase, double volumeCounter, int numTrades, Double bestBid,
+                          Double bestAsk, int bidOfferCount, int askOfferCount, double bidVolume,
+                          double askVolume, Double bidVwap, Double askVwap, int makerCount) {
+            this.market = market;
+            this.base = base;
+            this.counter = counter;
+            this.last = last;
+            this.open = open;
+            this.high = high;
+            this.low = low;
+            this.volumeBase = volumeBase;
+            this.volumeCounter = volumeCounter;
+            this.numTrades = numTrades;
+            this.bestBid = bestBid;
+            this.bestAsk = bestAsk;
+            this.bidOfferCount = bidOfferCount;
+            this.askOfferCount = askOfferCount;
+            this.bidVolume = bidVolume;
+            this.askVolume = askVolume;
+            this.bidVwap = bidVwap;
+            this.askVwap = askVwap;
+            this.makerCount = makerCount;
+        }
+    }
 }

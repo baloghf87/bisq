@@ -137,6 +137,7 @@ set so browsers can call it directly.
 | `GET /api/v1/trades[?market=&from=&to=&limit=]` | Trades tape, newest first. `from`/`to` are epoch **milliseconds** (default: last 30 days), `limit` default 500. `market` optional (all markets if omitted). |
 | `GET /api/v1/candles?market=BTC_EUR&interval=1h[&from=&to=]` | OHLCV candlesticks: `{time, open, high, low, close, volumeBase, volumeCounter, trades}`. `interval` e.g. `1m`,`5m`,`15m`,`1h`,`4h`,`1d`,`1w` (default `1d`). |
 | `GET /api/v1/ticker[?market=]` | 24h ticker per market: `{market, last, high, low, open, buy, sell, volumeBase, volumeCounter, numTrades}` (`buy`/`sell` are best bid/ask from the live book; nulls where no data). |
+| `GET /api/v1/summary` | Every market in one row (for whole-universe consumers such as a screener): the 24h ticker fields `{last, open, high, low, volumeBase, volumeCounter, numTrades}` plus book liquidity `{bestBid, bestAsk, bidOfferCount, askOfferCount, bidVolume, askVolume, bidVwap, askVwap, makerCount}` — volumes in the base asset, VWAP = size-weighted average price of each side, makers = distinct offer node addresses. |
 
 ---
 
