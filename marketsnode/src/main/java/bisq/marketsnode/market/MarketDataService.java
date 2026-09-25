@@ -387,8 +387,34 @@ public class MarketDataService {
     // Snapshots (defensive against concurrent mutation on the P2P/user thread)
     ///////////////////////////////////////////////////////////////////////////////////////////
 
+    /**
+     * Offers in the bisq.markets JSON form. Built here with the offer's own (BTC-side) direction,
+     * like {@code OfferBookService.doDumpStatistics}: {@link OfferForJson} already mirrors the
+     * direction for altcoin markets, so {@code OfferBookService.getOfferForJsonList} (which mirrors
+     * it once more for its own consumers) would report every altcoin buy offer as a sell and vice versa.
+     */
     private List<OfferForJson> offers() {
-        return withRetry(offerBookService::getOfferForJsonList);
+        return withRetry(() -> offerBookService.getOffers().stream()
+                .<OfferForJson>map(offer -> {
+                    try {
+                        return new OfferForJson(offer.getDirection(),
+                                offer.getCurrencyCode(),
+                                offer.getMinAmount(),
+                                offer.getAmount(),
+                                offer.getPrice(),
+                                offer.getDate(),
+                                offer.getId(),
+                                offer.isUseMarketBasedPrice(),
+                                offer.getMarketPriceMargin(),
+                                offer.getPaymentMethod());
+                    } catch (Throwable t) {
+                        // An offer with corrupted (null) values, or a market-based price without a
+                        // price feed; skip it like the statistics dump does.
+                        return null;
+                    }
+                })
+                .filter(java.util.Objects::nonNull)
+                .collect(Collectors.toList()));
     }
 
     private List<TradeStatistics3> trades() {

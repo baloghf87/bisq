@@ -18,6 +18,15 @@ dependencies {
     implementation project(':common')
     implementation project(':p2p')
     implementation project(':core')
+    // OfferForJson's constructor takes bitcoinj Coin amounts (core only exposes bitcoinj as implementation).
+    implementation(libs.bitcoinj) {
+        exclude(module: 'bcprov-jdk15on')
+        exclude(module: 'guava')
+        exclude(module: 'jsr305')
+        exclude(module: 'okhttp')
+        exclude(module: 'okio')
+        exclude(module: 'slf4j-api')
+    }
     annotationProcessor libs.lombok
     compileOnly libs.lombok
     implementation libs.slf4j.api

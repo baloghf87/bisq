@@ -282,14 +282,21 @@ To point at a non-mainnet network, pass `--baseCurrencyNetwork` (Docker: set `BI
 
 ## 7. Validation status
 
-- ✅ **Compiles** cleanly against the real `core`, `p2p` and `common` modules
-  (`./gradlew :marketsnode:compileJava`).
-- ✅ **Distribution assembles** — `installDist` produces `bin/marketsnode` and the full runtime
-  classpath, which is what the Docker image runs.
-- ⚠️ **Live mainnet run and `docker build` were not executed in the development sandbox** (its
-  proxy does not carry Tor's onion connections and cannot build images). The steps in
-  [How to test against the main network](#how-to-test-against-the-main-network) are the intended
-  smoke test to run in a real environment.
+- ✅ **Compiles** and `installDist` assembles (`./gradlew :marketsnode:installDist`).
+- ✅ **`docker build` + live mainnet run verified (2026-09-25)** on the k3s host, both with the bundled
+  Tor and against an external (shared) Tor daemon via `--torControlHost/--torControlPort/--torControlPassword`
+  (extra container args are appended to the entrypoint). Bootstrap ~5 min; 150 markets, ~760 offers,
+  ~417k trade statistics.
+- ✅ **Fixed: altcoin books had bids/asks swapped.** `OfferBookService.getOfferForJsonList()` already mirrors
+  the direction for altcoin markets and `OfferForJson` mirrors it again, so every altcoin buy offer showed
+  up as a sell. `MarketDataService.offers()` now builds the list from the raw offer direction (like
+  `doDumpStatistics`); after the fix XMR/BTC bids (0.00660) sit below asks (0.00669) as expected.
+- ⚠️ **Memory:** the DAO lite node plus the trade statistics need ~3 GB heap (`-Xmx3g`) and Bisq's own
+  watchdog must be raised above it (`--maxMemory=4000`), otherwise the node shuts itself down
+  ("We are over our memory limit (1200)") or dies with `OutOfMemoryError`. RSS ~3.4 GiB.
+- ⚠️ P2P books are frequently crossed (payment-method premiums, e.g. gift cards) — genuine, not a bug.
+- Docker builds from the repo root need `marketsnode/Dockerfile.dockerignore` (BuildKit per-Dockerfile
+  ignore): the root `.dockerignore` excludes all sources.
 
 ## 8. Possible follow-ups
 

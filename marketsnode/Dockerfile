@@ -20,7 +20,7 @@ WORKDIR /src
 # Copy the whole repository so the Gradle multi-project build can resolve every module.
 COPY . .
 # installDist produces build/install/marketsnode with a lib/ dir and a launch script.
-RUN --mount=type=cache,target=/root/.gradle \
+RUN --mount=type=cache,id=bisq-gradle,target=/root/.gradle \
     ./gradlew --no-daemon :marketsnode:installDist
 
 ########################  runtime stage  ########################
@@ -44,4 +44,6 @@ EXPOSE 8090
 
 # The installDist launch script is build/install/marketsnode/bin/marketsnode.
 # --appDataDir keeps all state on the mounted volume so restarts skip re-bootstrapping.
-ENTRYPOINT ["/bin/sh", "-c", "exec /app/bin/marketsnode --appDataDir=\"$BISQ_DATA_DIR\" --baseCurrencyNetwork=\"$BISQ_NETWORK\""]
+# Extra container args are appended, e.g. to use an already running (shared) Tor instead of the
+# bundled one: --torControlHost=tor.tor.svc --torControlPort=9051 --torControlPassword=...
+ENTRYPOINT ["/bin/sh", "-c", "exec /app/bin/marketsnode --appDataDir=\"$BISQ_DATA_DIR\" --baseCurrencyNetwork=\"$BISQ_NETWORK\" \"$@\"", "--"]

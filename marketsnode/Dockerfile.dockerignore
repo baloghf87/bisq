@@ -1,0 +1,7 @@
+# Per-Dockerfile ignore (BuildKit): the repo-root .dockerignore excludes everything except the
+# apitest/seednode/daemon install dists, which would leave this multi-project build without sources.
+.git
+.gradle
+**/build
+**/out
+.idea
