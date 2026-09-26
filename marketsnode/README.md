@@ -127,7 +127,7 @@ set so browsers can call it directly.
 | Endpoint | Description |
 |---|---|
 | `GET /` | Liveness — returns the same body as `/status`. |
-| `GET /api/v1/status` | `bootstrapped`, `numOffers`, `numTradeStatistics`, `numMarkets`, `version`, `timestamp`. |
+| `GET /api/v1/status` | `bootstrapped`, `numOffers`, `numTradeStatistics`, `numMarkets`, `version`, `timestamp`, plus the network-health signals: `numConnectedPeers`, `requireUpdateForTrading` / `requireUpdateForDao` (the network's signed filter demands a newer version — Bisq's "mandatory update"), `disableTradeBelowVersion` / `disableDaoBelowVersion`, `alert` (latest developer alert: `message`, `version`, `updateInfo`, `preReleaseInfo`, `newerThanOurs`), `maxOfferVersion` and `offersNewerThanOurs` (maker versions of the open offers). |
 | `GET /api/v1/ready` | Readiness — HTTP **200** `{"ready":true}` once the P2P network is bootstrapped, **503** while still syncing. |
 | `GET /api/v1/currencies` | Supported fiat and crypto currencies (`code`, `name`, `type`). |
 | `GET /api/v1/markets` | Active markets (pairs that currently have offers or trade statistics). |

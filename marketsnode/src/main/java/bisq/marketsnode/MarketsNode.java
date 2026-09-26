@@ -20,6 +20,8 @@ package bisq.marketsnode;
 import bisq.marketsnode.http.MarketsHttpServer;
 import bisq.marketsnode.market.MarketDataService;
 
+import bisq.core.alert.AlertManager;
+import bisq.core.filter.FilterManager;
 import bisq.core.offer.OfferBookService;
 import bisq.core.provider.price.PriceFeedService;
 import bisq.core.trade.statistics.TradeStatisticsManager;
@@ -52,6 +54,7 @@ public class MarketsNode {
     private final TradeStatisticsManager tradeStatisticsManager;
     @SuppressWarnings({"FieldCanBeLocal", "unused"})
     private final OfferBookService offerBookService;
+    private final AlertManager alertManager;
     private final MarketsHttpServer httpServer;
 
     public MarketsNode(Injector injector) {
@@ -59,10 +62,17 @@ public class MarketsNode {
         priceFeedService = injector.getInstance(PriceFeedService.class);
         tradeStatisticsManager = injector.getInstance(TradeStatisticsManager.class);
         offerBookService = injector.getInstance(OfferBookService.class);
+        // The filter is initialised by AppSetupWithP2P; the alert manager is bound but nothing else
+        // creates it on a headless node. Created here (before startup) it listens for alerts arriving
+        // from the network; alerts already in the persisted data map are replayed on data received.
+        FilterManager filterManager = injector.getInstance(FilterManager.class);
+        alertManager = injector.getInstance(AlertManager.class);
 
         MarketDataService marketDataService = new MarketDataService(offerBookService,
                 tradeStatisticsManager,
-                p2pService);
+                p2pService,
+                filterManager,
+                alertManager);
         httpServer = new MarketsHttpServer(resolveHost(), resolvePort(), marketDataService);
     }
 
@@ -72,6 +82,7 @@ public class MarketsNode {
         p2pService.addP2PServiceListener(new BootstrapListener() {
             @Override
             public void onDataReceived() {
+                alertManager.onAllServicesInitialized();
                 log.info("P2P data received; requesting price feed for market-based offers");
                 priceFeedService.requestPriceFeed(
                         price -> log.info("requestPriceFeed succeeded, price={}", price),

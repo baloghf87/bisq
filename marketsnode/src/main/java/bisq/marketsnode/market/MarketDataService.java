@@ -17,6 +17,7 @@
 
 package bisq.marketsnode.market;
 
+import bisq.marketsnode.dto.MarketDtos.AlertDto;
 import bisq.marketsnode.dto.MarketDtos.CandleDto;
 import bisq.marketsnode.dto.MarketDtos.CurrencyDto;
 import bisq.marketsnode.dto.MarketDtos.DepthDto;
@@ -29,11 +30,16 @@ import bisq.marketsnode.dto.MarketDtos.SummaryDto;
 import bisq.marketsnode.dto.MarketDtos.TickerDto;
 import bisq.marketsnode.dto.MarketDtos.TradeDto;
 
+import bisq.core.alert.Alert;
+import bisq.core.alert.AlertManager;
+import bisq.core.filter.Filter;
+import bisq.core.filter.FilterManager;
 import bisq.core.locale.CryptoCurrency;
 import bisq.core.locale.CurrencyUtil;
 import bisq.core.locale.Res;
 import bisq.core.locale.TradeCurrency;
 import bisq.core.monetary.Volume;
+import bisq.core.offer.Offer;
 import bisq.core.offer.OfferBookService;
 import bisq.core.offer.OfferDirection;
 import bisq.core.offer.OfferForJson;
@@ -74,13 +80,19 @@ public class MarketDataService {
     private final OfferBookService offerBookService;
     private final TradeStatisticsManager tradeStatisticsManager;
     private final P2PService p2pService;
+    private final FilterManager filterManager;
+    private final AlertManager alertManager;
 
     public MarketDataService(OfferBookService offerBookService,
                              TradeStatisticsManager tradeStatisticsManager,
-                             P2PService p2pService) {
+                             P2PService p2pService,
+                             FilterManager filterManager,
+                             AlertManager alertManager) {
         this.offerBookService = offerBookService;
         this.tradeStatisticsManager = tradeStatisticsManager;
         this.p2pService = p2pService;
+        this.filterManager = filterManager;
+        this.alertManager = alertManager;
     }
 
 
@@ -101,8 +113,40 @@ public class MarketDataService {
                 .filter(s -> !s.isBlank())
                 .distinct()
                 .count();
+        Filter filter = filterManager.getFilter();
+        String maxOfferVersion = null;
+        int offersNewerThanOurs = 0;
+        for (Offer offer : withRetry(() -> new ArrayList<>(offerBookService.getOffers()))) {
+            String v = offer.getVersionNr();
+            if (!isSemver(v)) continue;
+            if (Version.isNewVersion(v)) offersNewerThanOurs++;
+            if (maxOfferVersion == null || Version.isNewVersion(v, maxOfferVersion)) maxOfferVersion = v;
+        }
         return new StatusDto(p2pService.isBootstrapped(), offers.size(), trades.size(), numMarkets,
-                Version.VERSION, System.currentTimeMillis());
+                Version.VERSION, System.currentTimeMillis(),
+                p2pService.getNumConnectedPeers().get(),
+                filterManager.requireUpdateToNewVersionForTrading(),
+                filterManager.requireUpdateToNewVersionForDAO(),
+                filter != null ? emptyToNull(filter.getDisableTradeBelowVersion()) : null,
+                filter != null ? emptyToNull(filter.getDisableDaoBelowVersion()) : null,
+                alertDto(alertManager.alertMessageProperty().get()),
+                maxOfferVersion, offersNewerThanOurs);
+    }
+
+    private static AlertDto alertDto(Alert alert) {
+        if (alert == null) return null;
+        String version = emptyToNull(alert.getVersion());
+        boolean newer = (alert.isUpdateInfo() || alert.isPreReleaseInfo()) && isSemver(version)
+                && Version.isNewVersion(version);
+        return new AlertDto(alert.getMessage(), version, alert.isUpdateInfo(), alert.isPreReleaseInfo(), newer);
+    }
+
+    private static boolean isSemver(String v) {
+        return v != null && v.matches("\\d+\\.\\d+\\.\\d+");
+    }
+
+    private static String emptyToNull(String s) {
+        return s == null || s.isBlank() ? null : s;
     }
 
     public List<CurrencyDto> currencies() {

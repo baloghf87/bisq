@@ -37,17 +37,63 @@ public final class MarketDtos {
         public final int numOffers;
         public final int numTradeStatistics;
         public final int numMarkets;
+        /** Our Bisq core version ({@code Version.VERSION}). */
         public final String version;
         public final long timestamp;
+        /** Connected P2P peers right now. */
+        public final int numConnectedPeers;
+        /** The network's signed filter demands a newer version for trading / the DAO (Bisq's
+         *  "mandatory update" popups): the node then refuses to publish or take offers. */
+        public final boolean requireUpdateForTrading;
+        public final boolean requireUpdateForDao;
+        /** The filter's version floors as published (null when unset). */
+        public final String disableTradeBelowVersion;
+        public final String disableDaoBelowVersion;
+        /** The latest developer alert on the network, or null. */
+        public final AlertDto alert;
+        /** The highest Bisq version among the open offers' makers, and how many offers come from a
+         *  version newer than ours — the network moving on shows here before any filter does. */
+        public final String maxOfferVersion;
+        public final int offersNewerThanOurs;
 
         public StatusDto(boolean bootstrapped, int numOffers, int numTradeStatistics, int numMarkets,
-                         String version, long timestamp) {
+                         String version, long timestamp, int numConnectedPeers,
+                         boolean requireUpdateForTrading, boolean requireUpdateForDao,
+                         String disableTradeBelowVersion, String disableDaoBelowVersion,
+                         AlertDto alert, String maxOfferVersion, int offersNewerThanOurs) {
             this.bootstrapped = bootstrapped;
             this.numOffers = numOffers;
             this.numTradeStatistics = numTradeStatistics;
             this.numMarkets = numMarkets;
             this.version = version;
             this.timestamp = timestamp;
+            this.numConnectedPeers = numConnectedPeers;
+            this.requireUpdateForTrading = requireUpdateForTrading;
+            this.requireUpdateForDao = requireUpdateForDao;
+            this.disableTradeBelowVersion = disableTradeBelowVersion;
+            this.disableDaoBelowVersion = disableDaoBelowVersion;
+            this.alert = alert;
+            this.maxOfferVersion = maxOfferVersion;
+            this.offersNewerThanOurs = offersNewerThanOurs;
+        }
+    }
+
+    /** A developer alert ({@code bisq.core.alert.Alert}); {@code updateInfo} marks a release
+     *  announcement, {@code newerThanOurs} whether its version is newer than the running one. */
+    public static final class AlertDto {
+        public final String message;
+        public final String version;
+        public final boolean updateInfo;
+        public final boolean preReleaseInfo;
+        public final boolean newerThanOurs;
+
+        public AlertDto(String message, String version, boolean updateInfo, boolean preReleaseInfo,
+                        boolean newerThanOurs) {
+            this.message = message;
+            this.version = version;
+            this.updateInfo = updateInfo;
+            this.preReleaseInfo = preReleaseInfo;
+            this.newerThanOurs = newerThanOurs;
         }
     }
 
